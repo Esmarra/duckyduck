@@ -1,0 +1,272 @@
+#include <stdio.h>
+#include <string.h> // helps strcat
+#include <stdlib.h> // conv char to double
+#include <math.h> // use pow and sqrt
+//point_cloud1
+//c_is_for_retards
+char read_file_name[]="point_cloud1.txt";   // File to read
+char write_file_name[]="cloudpoint1_exit_qsortx.txt"; // File to write
+
+char temp; // Aux var to read file
+char makes[]=""; // Makes char array(string)
+
+struct tabela{
+    double x;
+    double y;
+    double z;
+}pointcloud[20000];
+
+typedef struct test{
+    double x;
+    double y;
+    double z;
+};
+
+float Minx,Miny,Minz; // Min
+float Maxx,Maxy,Maxz; // Max
+float Mux,Muy,Muz; // Average
+float Stdx,Stdy,Stdz;// Standard deviation
+
+struct str_sort {
+    double var;
+    int index;
+};
+
+int cmp(const void *a,const void *b) {
+    struct str_sort *a1 = (struct str_sort *)a;
+    struct str_sort *a2 = (struct str_sort *)b;
+    return ((*a1).var >= (*a2).var) ? 1 : -1;
+}
+
+void overwrite_neg_x(int line_line_num);
+
+int main(void){
+    int i=0; // For's aux
+    int cord=0; // Aux Store in PTC Table (0=x,1=y,2=z)
+    int line_num=0; // Num Lines
+    //======== READ .TXT FILE ========//
+    FILE *ficheiro1;
+    ficheiro1 = fopen(read_file_name,"rt"); // Inicializa ficheiro de leitura
+    while((temp=fgetc(ficheiro1))!=EOF){ // read txt car by car (omg...)
+        if(temp==' '){ // looks for space
+            //printf("<SPACE>");
+            //printf("\n X=%s",makes);
+            if(cord==0)pointcloud[line_num].x=strtod(makes,NULL); // conv makes[] to double, stores PTC[i].x
+            if(cord==1)pointcloud[line_num].y=strtod(makes,NULL); // conv makes[] to double, stores PTC[i].y
+            *makes='\0'; // clear makes[]
+            cord=cord+1; // set next coord (0=x,1=y,2=z)
+
+        }else if(temp=='\n'){ // Detects file endl
+                //printf("<end string>");
+                pointcloud[line_num].z=strtod(makes,NULL); // conv makes[] to double, stores PTC[i].z
+                //printf("\n Z=%s",makes);
+                *makes='\0'; // clear makes[]
+                line_num=line_num+1; // count number of lines
+                cord=0; // Reset coord(next coord is 0 aka x)
+        }else{
+             strcat(makes,&temp); // Adds char to string makes[]
+             //printf("%c",temp);
+        }
+    }
+    fclose(ficheiro1); // Close file
+    //======== READ .TXT FILE END ========
+
+    //======== MATH ========//
+    float Sx,Sy,Sz=0.0;
+    Minx=pointcloud[0].x;
+    Miny=pointcloud[0].y;
+    Minz=pointcloud[0].z;
+
+    Maxx=pointcloud[0].x;
+    Maxy=pointcloud[0].y;
+    Maxz=pointcloud[0].z;
+    for (i = 0; i < line_num; i++){
+        Sx = Sx + pointcloud[i].x;
+        Sy = Sy + pointcloud[i].y;
+        Sz = Sz + pointcloud[i].z;
+        if(Minx>pointcloud[i].x)Minx=pointcloud[i].x;
+        if(Miny>pointcloud[i].y)Miny=pointcloud[i].y;
+        if(Minz>pointcloud[i].z)Minz=pointcloud[i].z;
+
+        if(Maxx<pointcloud[i].x)Maxx=pointcloud[i].x;
+        if(Maxy<pointcloud[i].y)Maxy=pointcloud[i].y;
+        if(Maxz<pointcloud[i].z)Maxz=pointcloud[i].z;
+    }
+
+    Mux = Sx / line_num; // Average x
+    Muy = Sy / line_num; // Average y
+    Muz = Sz / line_num; // Average z
+
+    Sx = 0.0;
+    Sy = 0.0;
+    Sz = 0.0;
+    float Varx,Vary,Varz;
+    for (i = 0; i < line_num; i++){
+        Sx= Sx + pow((pointcloud[i].x - Mux), 2);
+        Sy= Sy + pow((pointcloud[i].y - Muy), 2);
+        Sz= Sz + pow((pointcloud[i].z - Muz), 2);
+    }
+    Varx = Sx / (line_num-1); // Variance x
+    Vary = Sy / (line_num-1); // Variance y
+    Varz = Sz / (line_num-1); // Variance z
+
+    Stdx = sqrt(Varx); // Standard deviation x
+    Stdy = sqrt(Vary); // Standard deviation y
+    Stdz = sqrt(Varz); // Standard deviation z
+    //======== MATH END ========//
+
+    printf("\n----------------------------------");
+    printf("\n Min | X:%f Y:%f Z=%f\n",Minx,Miny,Minz);
+    printf(" Max | X:%f Y:%f Z=%f\n",Maxx,Maxy,Maxz);
+    printf(" Average | X:%f Y:%f Z=%f\n",Mux,Muy,Muz);
+    printf(" Standard deviation | X:%f Y:%f Z=%f\n",Stdx,Stdy,Stdz);
+    printf("\n----------------------------------");
+
+
+    /*
+    //======== SORT FOR X CODE ========//
+    struct str_sort sorted_array[line_num]; //Prof Sort Code
+    printf("\n SORT FOR X");
+    for(i=0;i<line_num;i++){ // Run all lines
+        sorted_array[i].var=pointcloud[i].x; // Copy to array (x is sorted var)
+        sorted_array[i].index=i; // Set array index
+        //printf("\n Point | x=%f y=%f z=%f",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z); // Display PTC
+    }
+    printf("\n----------------------------------");
+    qsort(sorted_array, line_num, sizeof(sorted_array[0]), cmp); // Sort Array <3ms
+    for (i=0; i<line_num; i++){
+        // Save all sorted points to PointCloud
+        pointcloud[i].x = sorted_array[i].var;
+        pointcloud[i].y = pointcloud[sorted_array[i].index].y;
+        pointcloud[i].z = pointcloud[sorted_array[i].index].z;
+        //printf("\n Point | x=%f y=%f z=%f",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z);
+    }
+    //======== SORT FOR X CODE END ========//
+    */
+
+    /*
+    //======== DEBUG -> DISPLAY SORTED ARRAY ========//
+    for(i=0;i<line_num;i++){ // DEBUG -> DISPLAY SORTED ARRAY
+        printf("\n Array | x=%f index=%d",sorted_array[i].var,sorted_array[i].index); // Display Sorted Array
+    }
+    printf("\n----------------------------------");
+    */
+
+    int deleted_points_x=0;
+    int deleted_points_wallx=0;
+    double threshold=0.400; // <----- threshold 2 agressive?
+
+    // Elemina todos os x<0
+    for(i=0;i<line_num;i++){
+        if(pointcloud[i].x<0){ // Alinea 2.1 e 2.2 (as 2 no mesmo?) GG
+            overwrite_neg_x(i);
+            deleted_points_x++; // Keeps track of deleted points
+        }
+        //printf("\n Sorted Point for x | x=%f y=%f z=%f",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z); // Display PTC
+    }
+
+    // Elemina todos os z>0
+    for(i=0;i<line_num;i++){
+        if ((pointcloud[i].z>0)&&(pointcloud[i].x!=0)){
+            overwrite_neg_x(i);
+            deleted_points_x++;
+        }
+        //printf("\n Point | x=%f y=%f z=%f",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z);
+        if((pointcloud[i+1].x>(pointcloud[i].x-threshold))&&(pointcloud[i+1].x<(pointcloud[i].x+threshold)&&(pointcloud[i].x!=0))){ // Keep only ground/road
+            overwrite_neg_x(i); // A for effort :D
+            deleted_points_wallx++;
+        }
+
+    }
+
+    //======== DENOISE ========//
+    printf("\n--------------\n DENOISE std\n--------------");
+    int dntemp=0; // also num times it denoises
+    int dni;
+    for( dni = 0; dni < 20000; dni++){
+        if( pointcloud[dni].x !=0 &&  pointcloud[dni].x<Stdx && abs(pointcloud[dni].y)<Stdy && abs(pointcloud[dni].z<Stdz) ){
+            pointcloud[dntemp].x = pointcloud[dni].x;
+            pointcloud[dntemp].y = pointcloud[dni].y;
+            pointcloud[dntemp].z = pointcloud[dni].z;
+            dntemp++;
+        }
+    }
+
+    /*
+    //======== SORT FOR Y CODE ========//
+    printf("\n SORT FOR Y");
+    for(i=0;i<line_num;i++){ // Run all lines
+        sorted_array[i].var=pointcloud[i].y; // Copy to array (y is sorted var)
+        sorted_array[i].index=i; // Set array index
+        //printf("\n Point | x=%f y=%f z=%f",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z); // Display PTC
+    }
+    printf("\n----------------------------------");
+    */
+
+    //qsort(sorted_array, line_num, sizeof(sorted_array[0]), cmp); // Sort Array <3ms
+    /*
+    for(i=0;i<line_num;i++){
+        printf("\n Array | y=%f index=%d",sorted_array[i].var,sorted_array[i].index); // Display Sorted Array
+    }
+    printf("\n----------------------------------");
+    //======== SORT FOR Y CODE END ========//
+    */
+ 
+    /*
+    for (i=0; i<line_num; i++){
+        // Save all sorted points to PointCloud
+        pointcloud[i].y = sorted_array[i].var;
+        pointcloud[i].x = pointcloud[sorted_array[i].index].x;
+        pointcloud[i].z = pointcloud[sorted_array[i].index].z;
+        //printf("\n Sorted Point for y | x=%f y=%f z=%f",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z);
+    }
+    */
+/*
+    for(i=0;i<line_num;i++){
+        if((pointcloud[i+1].y>(pointcloud[i].y-threshold))&&(pointcloud[i+1].y<(pointcloud[i].y+threshold))){ // Keep only ground/road
+            overwrite_neg_x(i); // A for effort :D
+            deleted_points_wallx++;
+        }
+    }
+   // printf("\n Array | x=%f index=%d",sorted_array[0].var,sorted_array[0].index);
+*/
+
+    // Write New PCL
+    struct test temp_ptc[line_num-deleted_points_x-deleted_points_wallx];
+    int n_ptc=0;
+    FILE *outfile;
+    outfile = fopen(write_file_name,"w");
+    for(i=0;i<line_num;i++){
+        if((pointcloud[i].x)!=0){
+            fprintf(outfile,"%f %f %f\n",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z);
+            // Store to other struct
+            temp_ptc[n_ptc].x=pointcloud[i].x;
+            temp_ptc[n_ptc].y=pointcloud[i].y;
+            temp_ptc[n_ptc].z=pointcloud[i].z;
+            n_ptc++;
+
+        }
+    }
+    fclose(outfile);
+    //=== Write New PCL END ===
+/*
+    for(i=0;i<line_num-deleted_points_x-deleted_points_wallx;i++){
+        printf("\n Temp Ptc | x=%f y=%f z=%f",temp_ptc[i].x,temp_ptc[i].y,temp_ptc[i].z); // Display Temporary PTC
+    }
+*/
+    printf("\n\n %s has Lines=%d",read_file_name,line_num);
+    printf("\n | Deleted points |");
+    printf("\n   :x<0=%d",deleted_points_x);
+    printf("\n   :wall_x=%d",deleted_points_wallx);
+    printf("\n   :denoise=%d",dntemp);
+    printf("\n %s has %d points\n",write_file_name,line_num-deleted_points_x-deleted_points_wallx);
+
+    return(0);
+}
+
+void overwrite_neg_x(int line_line_num){
+    // Overwrite values with zero... (zero or null)?? whats better
+    pointcloud[line_line_num].x=0;
+    pointcloud[line_line_num].y=0;
+    pointcloud[line_line_num].z=0;
+}
