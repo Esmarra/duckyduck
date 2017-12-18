@@ -5,11 +5,6 @@
 #include <stdlib.h> // conv char to double
 #include <math.h> // use pow and sqrt
 #include <unistd.h>
-#include <pthread.h>
-#include <sched.h>
-#include <sys/resource.h>
-#include <sys/time.h>
-#include <sys/mman.h>
 #define MAX_PTC 20000
 //point_cloud1
 char read_file_name[]="point_cloud1.txt";   // File to read
@@ -49,70 +44,14 @@ void* task1(struct PointCloud *ptc);
 void* task2(struct PointCloud *ptc);
 void* task3(struct PointCloud *ptc);
 
-void overwrite_struct(struct PointCloud *temp,int line_line_num);
-void math(struct PointCloud *temp);
-void delete_x_neg(struct PointCloud *temp);
+void overwrite_struct(struct PointCloud *ptc,int line_line_num);
+void math(struct PointCloud *ptc);
+void delete_x_neg(struct PointCloud *ptc);
 void drivable(struct PointCloud *ptc);
 
 int main(void){
 	struct PointCloud pointcloud;
-	pointcloud.line_num=0;
-	pointcloud.deleted_points=0;
-	pointcloud.Stdx=0;
-    pointcloud.Stdy=0;
-    pointcloud.Stdz=0;
-
-	mlockall(MCL_CURRENT|MCL_FUTURE); // Lock Swapping
-	cpu_set_t mask; // Defines CPU(0)
-	CPU_ZERO(&mask);
-	CPU_SET(0,&mask);
-	// CPU Sanity check
-	int numCPU = CPU_COUNT(&mask);
-	if (numCPU > 1){
-		printf("ERROR: CPU number = %i \n",numCPU );
-	}
-	sched_setaffinity(getpid(),sizeof(cpu_set_t),&mask); // Set CPU affinity mask
-	pthread_t thr[3]; // Set fuction thread
-	pthread_attr_t attr[3]; // Inicialize thread atribute
-	struct sched_param param[3]; // Set Scheduling priority
 	
-	int i;
-	for(i=1;i<=3;i++){ // Thread Generator 1 2 3
-		int error; // Error var
-		pthread_attr_init(&attr[i]); // 1-Starts default thread
-		error=pthread_attr_setschedpolicy(&attr[i], SCHED_FIFO); // 2-Defines scheduling (SCHED_FIFO, SCHED_RR e SCHED_OTHER)
-		if (error!=0){
-			printf("ERROR: Bad Scheduling Policy\n");
-		}
-		
-		memset(&(param[i]), 0, sizeof(struct sched_param)); // <-- REVIEW
-		// Finds top priority and stores it
-		param[i].sched_priority = sched_get_priority_max (SCHED_FIFO);
-		if(param[i].sched_priority<0){
-			printf("ERROR: Getting Priority\n");
-		}
-		// Set max priority thread
-		error=pthread_attr_setschedparam(&attr[i], &param[i]);
-		if(error!=0){
-			printf("ERROR: Setting Priority \n");
-		}
-		// Set inherit schedule thread (INHERIT ou EXPLICIT)
-		error=pthread_attr_setinheritsched(&attr[i], PTHREAD_EXPLICIT_SCHED);
-		if(error!=0){
-			printf("ERROR: Setting Inherit Scheduler \n");
-		}
-		// Start new OS thread
-		printf("starting_threads");
-		if(i==1)error=pthread_create(&thr[1], &attr[1], task1(&pointcloud), NULL);
-		if(i==2)error=pthread_create(&thr[2], &attr[2], task2(&pointcloud), NULL);
-		if(i==3)error=pthread_create(&thr[3], &attr[3], task3(&pointcloud), NULL);
-		if (error!=0){
-			printf("ERROR: Creating Thread %d \n",i);
-		}
-	}
-
-
-/*
 	task1(&pointcloud); // Lê.txt calc Min Max Med Std
 	task2(&pointcloud); // nuke x<0
 	task3(&pointcloud);
@@ -166,12 +105,13 @@ int main(void){
         }
     }
 	*/
-/*	
+	
     // Write New PCL
     struct test temp_ptc[pointcloud.line_num-pointcloud.deleted_points];
     int n_ptc=0;
     FILE *outfile;
     outfile = fopen(write_file_name,"w");
+    int i;
     for(i=0;i<pointcloud.line_num;i++){
         if((pointcloud.x[i])!=0){
             fprintf(outfile,"%f %f %f\n",pointcloud.x[i],pointcloud.y[i],pointcloud.z[i]);
@@ -196,6 +136,8 @@ int main(void){
 */	
     printf("\n\n %s has Lines=%d",read_file_name,pointcloud.line_num);
     printf("\n Deleted points=%d",pointcloud.deleted_points);
+    //printf("\n   :wall_x=%d",deleted_points_wallx);
+    printf("\n %s has %d points\n",write_file_name,pointcloud.line_num-pointcloud.deleted_points);
     return(0);
 }
 
@@ -206,7 +148,7 @@ void* task1(struct PointCloud *ptc) {
 
 	//======== READ .TXT FILE ========//
     FILE *ficheiro1;
-    //ficheiro1 = (FILE *)malloc(sizeof(FILE));
+    //ficheiro1 = (FILE *)malloc(sizeof(FILE)); // SEGMENTATION FAULT
     ficheiro1 = fopen(read_file_name,"rt"); // Inicializa ficheiro de leitura
 	while( !feof (ficheiro1) ){
         float x,y,z=0.0;
@@ -229,63 +171,19 @@ void* task1(struct PointCloud *ptc) {
     printf(" Max | X:%f Y:%f Z=%f\n",ptc->Maxx,ptc->Maxy,ptc->Maxz);
     printf(" Average | X:%f Y:%f Z=%f\n",ptc->Mux,ptc->Muy,ptc->Muz);
     printf(" Standard deviation | X:%f Y:%f Z=%f\n",ptc->Stdx,ptc->Stdy,ptc->Stdz);
-    printf("\n----------------------------------\n");
-    pthread_exit(NULL); // kills thread
+    printf("\n----------------------------------");
 }
 
 void* task2(struct PointCloud *ptc){
 	delete_x_neg(ptc); // delete all x<0
-	pthread_exit(NULL); // kills thread
 }
 
 void* task3(struct PointCloud *ptc){
 	
-	pthread_exit(NULL); // kills thread
 }
 
 void math(struct PointCloud *ptc) {
-	/*
-    ptc->Minx=ptc->x[0];
-    ptc->Miny=ptc->y[0];
-    ptc->Minz=ptc->z[0];
-
-    ptc->Maxx=ptc->x[0];
-    ptc->Maxy=ptc->y[0];
-	ptc->Maxz=ptc->z[0];
-	int i;
-	for (i = 0; i < ptc->line_num; i++){ // MIN and MAX
-    	if(ptc->Minx>ptc->x[i])ptc->Minx=ptc->x[i];
-        if(ptc->Miny>ptc->y[i])ptc->Miny=ptc->y[i];
-        if(ptc->Minz>ptc->z[i])ptc->Minz=ptc->z[i];
-
-        if(ptc->Maxx<ptc->x[i])ptc->Maxx=ptc->x[i];
-        if(ptc->Maxy<ptc->y[i])ptc->Maxy=ptc->y[i];
-        if(ptc->Maxz<ptc->z[i])ptc->Maxz=ptc->z[i];
-    }
-	
-    for (i = 0; i < ptc->line_num; i++){ // AVERAGE
-        ptc->Mux += ptc->x[i];
-    	ptc->Muy += ptc->y[i];
-    	ptc->Muz += ptc->z[i];
-        
-    }
-    ptc->Mux /= ptc->line_num; // Average x
-  	ptc->Muy /= ptc->line_num; // Average y
-  	ptc->Muz /= ptc->line_num; // Average z
-    
-    
-    for (i = 0; i < ptc->line_num; i++){
-		ptc->Stdx += pow(ptc->x[i] - ptc->Mux, 2);
-    	ptc->Stdy += pow(ptc->y[i] - ptc->Muy, 2);
-    	ptc->Stdz += pow(ptc->z[i] - ptc->Muz, 2);
-	}
-    ptc->Stdx = sqrt(ptc->Stdx/ptc->line_num);
-	ptc->Stdy = sqrt(ptc->Stdy/ptc->line_num);
-	ptc->Stdz = sqrt(ptc->Stdz/ptc->line_num);
-	*/
-	float Sx=0.0;
-	float Sy=0.0;
-	float Sz=0.0;
+	float Sx,Sy,Sz=0.0;
     
     ptc->Minx=ptc->x[0];
     ptc->Miny=ptc->y[0];
@@ -340,7 +238,7 @@ void overwrite_struct(struct PointCloud *ptc,int line_line_num){
 
 void delete_x_neg(struct PointCloud *ptc){
 	int i;
-	for(i=0;i<ptc->line_num;i++){
+	for(i=0;i<ptc->line_num;i++){ // Corre todas as linhas
         if(ptc->x[i]<0){ // Alinea 2.1 e 2.2 (as 2 no mesmo?) GG
             overwrite_struct(ptc,i);
             ptc->deleted_points++;// Keeps track of deleted points
@@ -352,9 +250,9 @@ void drivable(struct PointCloud *ptc){
 	int i;
 	for( i=0; i<ptc->line_num; i++){ // Pessoa mambo jambo
 		if( ptc->x[i] !=0 &&  abs(ptc->x[i]>ptc->Stdx*2) || abs(ptc->y[i])>ptc->Stdy-1 || abs(ptc->z[i]>ptc->Stdz) ){			
-			ptc->x[i] = 0;//ointcloud[i].x; 
-            ptc->y[i] = 0;//pointcloud[i].y;
-            ptc->z[i] = 0;//pointcloud[i].z;
+			ptc->x[i] = 0; //ointcloud.x[i]; 
+            ptc->y[i] = 0; //pointcloud.y[i];
+            ptc->z[i] = 0; //pointcloud.z[i];
         }
     }
 }
