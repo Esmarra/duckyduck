@@ -10,7 +10,7 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <sys/mman.h>
-#include <semaphore.h> // Mutex LIB
+#include <semaphore.h> // Mutex Lib
 #define MAX_PTC 20000
 //point_cloud1
 char read_file_name[]="point_cloud1.txt";   // File to read
@@ -55,7 +55,7 @@ void math(struct PointCloud *temp);
 void delete_x_neg(struct PointCloud *temp);
 void drivable(struct PointCloud *ptc);
 
-sem_t mutex;
+sem_t mutex; // Inicia Mutex-Semaforo
 
 int main(void){
 	struct PointCloud pointcloud;
@@ -80,7 +80,7 @@ int main(void){
 	struct sched_param param[3]; // Set Scheduling priority
 	
 	int i;
-	for(i=0;i<3;i++){ // Thread Generator 1 2 3
+	for(i=0;i<3;i++){ // Thread Generator 0 1 2
 		int error; // Error var
 		pthread_attr_init(&attr[i]); // 1-Starts default thread
 		error=pthread_attr_setschedpolicy(&attr[i], SCHED_FIFO); // 2-Defines scheduling (SCHED_FIFO, SCHED_RR e SCHED_OTHER)
@@ -104,34 +104,26 @@ int main(void){
 		if(error!=0){
 			printf("ERROR: Setting Inherit Scheduler \n");
 		}
-		// Start new OS thread
-		//printf("starting_threads");
-		sem_init(&mutex, 0, 1);
-
-		if(i==0){
-			error=pthread_create(&thr[i], &attr[i], task1(&pointcloud), NULL);
-printf("tread 1");
-}
-
-		if(i==1){
-			error=pthread_create(&thr[i], &attr[i], task2(&pointcloud), NULL);
-printf("tread 2");
-}
-		if(i==2)error=pthread_create(&thr[i], &attr[i], task3(&pointcloud), NULL);
-		if (error!=0){
-			printf("ERROR: Creating Thread %d \n",i);
-		}
-
 	}
+	sem_init(&mutex, 0, 1);
+	// Start new OS thread
+	//printf("starting_threads");
+	pthread_create(&thr[0], &attr[0], task1(&pointcloud), NULL);
+	printf("thread 1");
+	pthread_create(&thr[1], &attr[1], task1(&pointcloud), NULL);
+	printf("thread 2");
+	pthread_create(&thr[2], &attr[2], task1(&pointcloud), NULL);
+	
 	pthread_join(thr[0],NULL);
 	pthread_join(thr[1],NULL);
 	pthread_join(thr[2],NULL);
+	/*
 	do {
 		printf("\n\nWaiting...\n\n");
 		sem_destroy(&mutex); // destroy mutex before ending the program
 		exit(EXIT_SUCCESS);
     } while(1);
-
+	
 /*	
     // Write New PCL
     struct test temp_ptc[pointcloud.line_num-pointcloud.deleted_points];
@@ -151,9 +143,9 @@ printf("tread 2");
     fclose(outfile);
     //=== Write New PCL END ===
 */
-    printf("\n\n %s has Lines=%d",read_file_name,pointcloud.line_num);
-    printf("\n Deleted points=%d",pointcloud.deleted_points);
-    return(0);
+    //printf("\n\n %s has Lines=%d",read_file_name,pointcloud.line_num);
+   // printf("\n Deleted points=%d",pointcloud.deleted_points);
+    //return(0);
 }
 
 void* task1(struct PointCloud *ptc) {
@@ -181,6 +173,7 @@ void* task1(struct PointCloud *ptc) {
 
     //======== MATH ========//
     math(ptc);
+    
     //======== MATH END ========//
     printf("\n----------------------------------");
     printf("\n Min | X:%f Y:%f Z=%f\n",ptc->Minx,ptc->Miny,ptc->Minz);
@@ -188,7 +181,7 @@ void* task1(struct PointCloud *ptc) {
     printf(" Average | X:%f Y:%f Z=%f\n",ptc->Mux,ptc->Muy,ptc->Muz);
     printf(" Standard deviation | X:%f Y:%f Z=%f\n",ptc->Stdx,ptc->Stdy,ptc->Stdz);
     printf("\n----------------------------------\n");
-    //
+
     sem_post(&mutex);
     //pthread_exit(NULL); // kills thread
 }
@@ -240,7 +233,10 @@ void math(struct PointCloud *ptc) {
     Sx = 0.0;
     Sy = 0.0;
     Sz = 0.0;
-    float Varx,Vary,Varz;
+    float Varx=0.0;
+    float Vary=0.0;
+    float Varz=0.0;
+    
     for (i = 0; i < ptc->line_num; i++){
         Sx= Sx + pow((ptc->x[i] - ptc->Mux), 2);
         Sy= Sy + pow((ptc->y[i] - ptc->Muy), 2);
