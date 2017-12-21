@@ -12,18 +12,20 @@
 #include <sys/mman.h>
 #include <semaphore.h> // Mutex Lib
 #define MAX_PTC 20000
+
+sem_t mutex; // Inicia Mutex-Semaforo
 //point_cloud1
 char read_file_name[]="point_cloud1.txt";   // File to read
 char write_file_name[]="cloudpoint1_exit_qsortx.txt"; // File to write
 
 struct PointCloud{
-    double x[MAX_PTC];
-    double y[MAX_PTC];
-    double z[MAX_PTC];
+	double x[MAX_PTC];
+	double y[MAX_PTC];
+	double z[MAX_PTC];
 	float Minx,Miny,Minz; // Min
 	float Maxx,Maxy,Maxz; // Max
 	float Mux,Muy,Muz; // Average
-	float Stdx,Stdy,Stdz;// Standard deviation
+	float Stdx,Stdy,Stdz; // Standard deviation
 	int line_num;
 	int deleted_points;
 };
@@ -55,9 +57,11 @@ void math(struct PointCloud *temp);
 void delete_x_neg(struct PointCloud *temp);
 void drivable(struct PointCloud *ptc);
 
-sem_t mutex; // Inicia Mutex-Semaforo
 
-int main(void){
+
+int main(int argc, char * argv []){
+	read_file_name[0]='\0'; // Clear char
+	strcat(read_file_name,argv[1]);// Append console argv to read_file_name
 	struct PointCloud pointcloud;
 	pointcloud.line_num=0;
 	pointcloud.deleted_points=0;
@@ -107,22 +111,26 @@ int main(void){
 	}
 	sem_init(&mutex, 0, 1);
 	// Start new OS thread
-	//printf("starting_threads");
+	printf("\nStarting_threads:\n");
+	printf(" Thread 1: ");
 	pthread_create(&thr[0], &attr[0], task1(&pointcloud), NULL);
-	printf("thread 1");
-	pthread_create(&thr[1], &attr[1], task1(&pointcloud), NULL);
-	printf("thread 2");
-	pthread_create(&thr[2], &attr[2], task1(&pointcloud), NULL);
+	printf(" Thread 2: ");
+	pthread_create(&thr[1], &attr[1], task2(&pointcloud), NULL);
+	printf(" Thread 3: ");
+	pthread_create(&thr[2], &attr[2], task3(&pointcloud), NULL);
+	
 	
 	pthread_join(thr[0],NULL);
 	pthread_join(thr[1],NULL);
 	pthread_join(thr[2],NULL);
-	/*
-	do {
-		printf("\n\nWaiting...\n\n");
-		sem_destroy(&mutex); // destroy mutex before ending the program
-		exit(EXIT_SUCCESS);
-    } while(1);
+	
+	//while(1){
+		//printf("\n\nWaiting...\n\n");
+		
+		
+    //}
+    sem_destroy(&mutex); // destroy mutex before ending the program
+    return(0);
 	
 /*	
     // Write New PCL
@@ -149,7 +157,8 @@ int main(void){
 }
 
 void* task1(struct PointCloud *ptc) {
-    sem_wait(&mutex);
+	printf("    Starting Task1\n");
+    sem_wait(&mutex); // Lock Semaphore
     ptc->line_num=0;
     ptc->deleted_points=0;
     int i=0; // For's aux
@@ -169,34 +178,33 @@ void* task1(struct PointCloud *ptc) {
     ptc->line_num-=1;
     fclose(ficheiro1);// Close file
     //free(ficheiro1); //Limpa memoria
-    //======== READ .TXT FILE END ========
+    //======== READ .TXT FILE END ========//
 
     //======== MATH ========//
     math(ptc);
-    
     //======== MATH END ========//
-    printf("\n----------------------------------");
+	printf("\n----------------------------------");
     printf("\n Min | X:%f Y:%f Z=%f\n",ptc->Minx,ptc->Miny,ptc->Minz);
     printf(" Max | X:%f Y:%f Z=%f\n",ptc->Maxx,ptc->Maxy,ptc->Maxz);
     printf(" Average | X:%f Y:%f Z=%f\n",ptc->Mux,ptc->Muy,ptc->Muz);
-    printf(" Standard deviation | X:%f Y:%f Z=%f\n",ptc->Stdx,ptc->Stdy,ptc->Stdz);
+    printf(" Standard deviation | X:%f Y:%f Z=%f",ptc->Stdx,ptc->Stdy,ptc->Stdz);
     printf("\n----------------------------------\n");
 
-    sem_post(&mutex);
-    //pthread_exit(NULL); // kills thread
+    sem_post(&mutex); // Unlock Semaphore 
 }
 
 void* task2(struct PointCloud *ptc){
-    sem_wait(&mutex);
-    delete_x_neg(ptc); // delete all x<0
-    //pthread_exit(NULL); // kills thread
-    sem_post(&mutex);
+	printf("    Starting Task2\n");
+    sem_wait(&mutex); // Lock Semaphore 
+    delete_x_neg(ptc); // delete all x<0 e cluster points
+    sem_post(&mutex); // Unlock Semaphore 
 }
 
 void* task3(struct PointCloud *ptc){
-    sem_wait(&mutex);
-    //pthread_exit(NULL); // kills thread
-    sem_post(&mutex);
+	printf("    Starting Task3\n");
+    sem_wait(&mutex); // Lock Semaphore 
+    
+    sem_post(&mutex); // Unlock Semaphore 
 }
 
 void math(struct PointCloud *ptc) {
