@@ -73,7 +73,7 @@ int main(int argc, char * argv []){
 	if (error!=0){
 		printf("ERROR: Bad Scheduling Policy\n");
 	}
-	// Finds top priority and stores it
+	// Finds top priority and stores it0
 	param.sched_priority = sched_get_priority_max (SCHED_FIFO);
 	if(param.sched_priority<0){
 		printf("ERROR: Getting Priority\n");

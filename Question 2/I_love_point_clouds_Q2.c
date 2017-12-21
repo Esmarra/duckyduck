@@ -10,6 +10,7 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <sys/mman.h>
+#include <semaphore.h> // Mutex LIB
 #define MAX_PTC 20000
 //point_cloud1
 char read_file_name[]="point_cloud1.txt";   // File to read
@@ -54,6 +55,8 @@ void math(struct PointCloud *temp);
 void delete_x_neg(struct PointCloud *temp);
 void drivable(struct PointCloud *ptc);
 
+sem_t mutex;
+
 int main(void){
 	struct PointCloud pointcloud;
 	pointcloud.line_num=0;
@@ -77,7 +80,7 @@ int main(void){
 	struct sched_param param[3]; // Set Scheduling priority
 	
 	int i;
-	for(i=1;i<=3;i++){ // Thread Generator 1 2 3
+	for(i=0;i<3;i++){ // Thread Generator 1 2 3
 		int error; // Error var
 		pthread_attr_init(&attr[i]); // 1-Starts default thread
 		error=pthread_attr_setschedpolicy(&attr[i], SCHED_FIFO); // 2-Defines scheduling (SCHED_FIFO, SCHED_RR e SCHED_OTHER)
@@ -102,70 +105,33 @@ int main(void){
 			printf("ERROR: Setting Inherit Scheduler \n");
 		}
 		// Start new OS thread
-		printf("starting_threads");
-		if(i==1)error=pthread_create(&thr[1], &attr[1], task1(&pointcloud), NULL);
-		if(i==2)error=pthread_create(&thr[2], &attr[2], task2(&pointcloud), NULL);
-		if(i==3)error=pthread_create(&thr[3], &attr[3], task3(&pointcloud), NULL);
+		//printf("starting_threads");
+		sem_init(&mutex, 0, 1);
+
+		if(i==0){
+			error=pthread_create(&thr[i], &attr[i], task1(&pointcloud), NULL);
+printf("tread 1");
+}
+
+		if(i==1){
+			error=pthread_create(&thr[i], &attr[i], task2(&pointcloud), NULL);
+printf("tread 2");
+}
+		if(i==2)error=pthread_create(&thr[i], &attr[i], task3(&pointcloud), NULL);
 		if (error!=0){
 			printf("ERROR: Creating Thread %d \n",i);
 		}
+
 	}
+	pthread_join(thr[0],NULL);
+	pthread_join(thr[1],NULL);
+	pthread_join(thr[2],NULL);
+	do {
+		printf("\n\nWaiting...\n\n");
+		sem_destroy(&mutex); // destroy mutex before ending the program
+		exit(EXIT_SUCCESS);
+    } while(1);
 
-
-/*
-	task1(&pointcloud); // Lê.txt calc Min Max Med Std
-	task2(&pointcloud); // nuke x<0
-	task3(&pointcloud);
-/*
-    //======== SORT FOR X CODE ========//
-    struct str_sort sorted_array[pointcloud.line_num]; //Prof Sort Code
-    printf("\n SORT FOR X");
-    for(i=0;i<pointcloud.line_num;i++){ // Run all lines
-        sorted_array[i].var=pointcloud.x[i]; // Copy to array.var (x is sorted var)
-		sorted_array[i].vary=pointcloud.y[i]; // Copy to array.vary (y is sorted var)
-		sorted_array[i].varz=pointcloud.z[i]; // Copy to array.varz (z is sorted var)
-        sorted_array[i].index=i; // Set array index
-        //printf("\n Point | x=%f y=%f z=%f",pointcloud.x[i],pointcloud.y[i],pointcloud.z[i]); // Display PTC
-    }
-    printf("\n----------------------------------");
-    qsort(sorted_array, pointcloud.line_num, sizeof(sorted_array[0]), cmp); // Sort Array <3ms
-    for (i=0; i<pointcloud.line_num; i++){
-        // Save all sorted points to PointCloud
-        pointcloud.x[i] = sorted_array[i].var;
-        pointcloud.y[i] = sorted_array[i].vary;
-        pointcloud.z[i] = sorted_array[i].varz;
-        //printf("\n Point | x=%f y=%f z=%f",pointcloud.x[i],pointcloud.y[i],pointcloud.z[i]);
-    }
-    //======== SORT FOR X CODE END ========//
-*/
-    /*
-    //======== DEBUG -> DISPLAY SORTED ARRAY ========//
-    for(i=0;i<line_num;i++){ // DEBUG -> DISPLAY SORTED ARRAY
-        printf("\n Array | x=%f index=%d",sorted_array[i].var,sorted_array[i].index); // Display Sorted Array
-    }
-    printf("\n----------------------------------");
-    */
-
-	/*******************************
-	*		POINT PROCESSING
-	********************************/
-
-    // Elemina todos os z>0 |Esmr|
-    /*
-    int deleted_points_wallx=0;
-    double threshold=0.400; // <----- threshold 2 agressive?
-    for(i=0;i<pointcloud.line_num;i++){
-        if ((pointcloud.z[i]>0)&&(pointcloud.x[i]!=0)){
-            overwrite_struct(&pointcloud,i);
-            pointcloud.deleted_points++;
-        }
-        //printf("\n Point | x=%f y=%f z=%f",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z);
-        if((pointcloud.x[i+1]>(pointcloud.x[i]-threshold))&&(pointcloud.x[i+1]<(pointcloud.x[i]+threshold)&&(pointcloud.x[i]!=0))){ // Keep only ground/road
-            overwrite_struct(&pointcloud,i); // A for effort :D
-            deleted_points_wallx++;
-        }
-    }
-	*/
 /*	
     // Write New PCL
     struct test temp_ptc[pointcloud.line_num-pointcloud.deleted_points];
@@ -184,27 +150,19 @@ int main(void){
     }
     fclose(outfile);
     //=== Write New PCL END ===
-    
-/*
-	for(i=0;i<pointcloud.line_num;i++){ // Print Current PointCloud
-		printf("\n Point | x=%f y=%f z=%f",pointcloud.x[i],pointcloud.y[i],pointcloud.z[i]);
-	}
-	
-    for(i=0;i<pointcloud.line_num;i++){ // Print Temporary PTC
-        printf("\n Temp Ptc | x=%f y=%f z=%f",temp_ptc[i].x,temp_ptc[i].y,temp_ptc[i].z); 
-    }
-*/	
+*/
     printf("\n\n %s has Lines=%d",read_file_name,pointcloud.line_num);
     printf("\n Deleted points=%d",pointcloud.deleted_points);
     return(0);
 }
 
 void* task1(struct PointCloud *ptc) {
-	ptc->line_num=0;
-	ptc->deleted_points=0;
+    sem_wait(&mutex);
+    ptc->line_num=0;
+    ptc->deleted_points=0;
     int i=0; // For's aux
 
-	//======== READ .TXT FILE ========//
+    //======== READ .TXT FILE ========//
     FILE *ficheiro1;
     //ficheiro1 = (FILE *)malloc(sizeof(FILE));
     ficheiro1 = fopen(read_file_name,"rt"); // Inicializa ficheiro de leitura
@@ -222,7 +180,7 @@ void* task1(struct PointCloud *ptc) {
     //======== READ .TXT FILE END ========
 
     //======== MATH ========//
-	math(ptc);
+    math(ptc);
     //======== MATH END ========//
     printf("\n----------------------------------");
     printf("\n Min | X:%f Y:%f Z=%f\n",ptc->Minx,ptc->Miny,ptc->Minz);
@@ -230,59 +188,25 @@ void* task1(struct PointCloud *ptc) {
     printf(" Average | X:%f Y:%f Z=%f\n",ptc->Mux,ptc->Muy,ptc->Muz);
     printf(" Standard deviation | X:%f Y:%f Z=%f\n",ptc->Stdx,ptc->Stdy,ptc->Stdz);
     printf("\n----------------------------------\n");
-    pthread_exit(NULL); // kills thread
+    //
+    sem_post(&mutex);
+    //pthread_exit(NULL); // kills thread
 }
 
 void* task2(struct PointCloud *ptc){
-	delete_x_neg(ptc); // delete all x<0
-	pthread_exit(NULL); // kills thread
+    sem_wait(&mutex);
+    delete_x_neg(ptc); // delete all x<0
+    //pthread_exit(NULL); // kills thread
+    sem_post(&mutex);
 }
 
 void* task3(struct PointCloud *ptc){
-	
-	pthread_exit(NULL); // kills thread
+    sem_wait(&mutex);
+    //pthread_exit(NULL); // kills thread
+    sem_post(&mutex);
 }
 
 void math(struct PointCloud *ptc) {
-	/*
-    ptc->Minx=ptc->x[0];
-    ptc->Miny=ptc->y[0];
-    ptc->Minz=ptc->z[0];
-
-    ptc->Maxx=ptc->x[0];
-    ptc->Maxy=ptc->y[0];
-	ptc->Maxz=ptc->z[0];
-	int i;
-	for (i = 0; i < ptc->line_num; i++){ // MIN and MAX
-    	if(ptc->Minx>ptc->x[i])ptc->Minx=ptc->x[i];
-        if(ptc->Miny>ptc->y[i])ptc->Miny=ptc->y[i];
-        if(ptc->Minz>ptc->z[i])ptc->Minz=ptc->z[i];
-
-        if(ptc->Maxx<ptc->x[i])ptc->Maxx=ptc->x[i];
-        if(ptc->Maxy<ptc->y[i])ptc->Maxy=ptc->y[i];
-        if(ptc->Maxz<ptc->z[i])ptc->Maxz=ptc->z[i];
-    }
-	
-    for (i = 0; i < ptc->line_num; i++){ // AVERAGE
-        ptc->Mux += ptc->x[i];
-    	ptc->Muy += ptc->y[i];
-    	ptc->Muz += ptc->z[i];
-        
-    }
-    ptc->Mux /= ptc->line_num; // Average x
-  	ptc->Muy /= ptc->line_num; // Average y
-  	ptc->Muz /= ptc->line_num; // Average z
-    
-    
-    for (i = 0; i < ptc->line_num; i++){
-		ptc->Stdx += pow(ptc->x[i] - ptc->Mux, 2);
-    	ptc->Stdy += pow(ptc->y[i] - ptc->Muy, 2);
-    	ptc->Stdz += pow(ptc->z[i] - ptc->Muz, 2);
-	}
-    ptc->Stdx = sqrt(ptc->Stdx/ptc->line_num);
-	ptc->Stdy = sqrt(ptc->Stdy/ptc->line_num);
-	ptc->Stdz = sqrt(ptc->Stdz/ptc->line_num);
-	*/
 	float Sx=0.0;
 	float Sy=0.0;
 	float Sz=0.0;
