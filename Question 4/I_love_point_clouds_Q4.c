@@ -202,26 +202,26 @@ void* f_timer(void* arg){
 	double *performance=malloc(3*sizeof(double)); // Execution time for t1 t2 t3
 	
 	//======== READ .TXT FILE ========//
-    FILE *ficheiro1;
-    //ficheiro1 = (FILE *)malloc(sizeof(FILE)); // SEGMENTATION FAULT
-    ficheiro1 = fopen(read_file_name,"rt"); // Inicializa ficheiro de leitura
+	FILE *ficheiro1;
+	//ficheiro1 = (FILE *)malloc(sizeof(FILE)); // SEGMENTATION FAULT
+	ficheiro1 = fopen(read_file_name,"rt"); // Inicializa ficheiro de leitura
 	while( !feof (ficheiro1) ){
-        float x,y,z=0.0;
-        fscanf(ficheiro1, "%f %f %f", &x, &y, &z);
-        pointcloud.x[pointcloud.line_num] = x;
-        pointcloud.y[pointcloud.line_num] = y;
-        pointcloud.z[pointcloud.line_num] = z;
-        pointcloud.line_num++;
+		float x,y,z=0.0;
+		fscanf(ficheiro1, "%f %f %f", &x, &y, &z);
+		pointcloud.x[pointcloud.line_num] = x;
+		pointcloud.y[pointcloud.line_num] = y;
+		pointcloud.z[pointcloud.line_num] = z;
+		pointcloud.line_num++;
     }
-    pointcloud.line_num-=1;
-    fclose(ficheiro1);// Close file
-    //free(ficheiro1); //Limpa memoria
-    //======== READ .TXT FILE END ========
+	pointcloud.line_num-=1;
+	fclose(ficheiro1);// Close file
+	//free(ficheiro1); //Limpa memoria
+	//======== READ .TXT FILE END ========
 
 	clock_gettime(CLOCK_MONOTONIC,&strT); // f1 start time
 	// F1 --> math
-    math(&pointcloud);
-    // F1 END
+	math(&pointcloud);
+	// F1 END
 	clock_gettime(CLOCK_MONOTONIC,&endT); // f1 end time
 	performance[0] += (endT.tv_sec-strT.tv_sec)+(endT.tv_nsec-strT.tv_nsec)/(float)BILLION;
 
@@ -230,15 +230,15 @@ void* f_timer(void* arg){
 	// F2 --> data processing (x<0|z<0)
 	delete_x_neg(&pointcloud);
 	keep_ground(&pointcloud);
-    // F2 END
+	// F2 END
 	clock_gettime(CLOCK_MONOTONIC,&endT); // f2 end time
 	performance[1] += (endT.tv_sec-strT.tv_sec)+(endT.tv_nsec-strT.tv_nsec)/(float)BILLION;
 
 	
 	clock_gettime(CLOCK_MONOTONIC,&strT); // f3 start time
 	// F3 --> Drivable Points
-    drivable(&pointcloud);
-    // F3 END
+	drivable(&pointcloud);
+	// F3 END
 	clock_gettime(CLOCK_MONOTONIC,&endT); // f3 end time
 	performance[2] += (endT.tv_sec-strT.tv_sec)+(endT.tv_nsec-strT.tv_nsec)/(float)BILLION;
 	pthread_exit((void*)performance); // End thread, shows performance
