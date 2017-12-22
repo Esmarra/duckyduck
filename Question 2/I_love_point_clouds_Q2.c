@@ -102,6 +102,10 @@ int main(int argc, char * argv []){
     struct test temp_ptc[pointcloud.line_num-pointcloud.deleted_points];
     int n_ptc=0;
     FILE *outfile;
+    write_file_name[0]='\0'; // Clear char
+    strcat(write_file_name,argv[1]);// Append console argv to read_file_name
+    strcat(write_file_name,"_exit.txt");// Append console argv to read_file_name
+    
     outfile = fopen(write_file_name,"w");
     for(i=0;i<pointcloud.line_num;i++){
         if((pointcloud.x[i])!=0){
