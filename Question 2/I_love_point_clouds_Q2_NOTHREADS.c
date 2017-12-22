@@ -45,9 +45,10 @@ void* task2(struct PointCloud *ptc);
 void* task3(struct PointCloud *ptc);
 
 void overwrite_struct(struct PointCloud *ptc,int line_line_num);
-void math(struct PointCloud *ptc);
-void delete_x_neg(struct PointCloud *ptc);
-void drivable(struct PointCloud *ptc);
+void math(struct PointCloud *temp); // Pergunta 1
+void delete_x_neg(struct PointCloud *temp); // Pergunta 2.1 e 2.2
+void keep_ground(struct PointCloud *ptc); // Pergunta 2.3
+void drivable(struct PointCloud *ptc); // Pergunta 3
 
 int main(void){
 	int i;
@@ -162,19 +163,13 @@ void* task1(struct PointCloud *ptc) {
 }
 
 void* task2(struct PointCloud *ptc){
-	delete_x_neg(ptc); // delete all x<0
+	delete_x_neg(ptc); // Delete all x<0
+	keep_ground(ptc); // Keep ground
 }
 
 void* task3(struct PointCloud *ptc){
-	// Delete Paredes e outliners (Fica só o chão)
-    int i;
-    double thr=(ptc->Muz)/2; // <----- threshold 2 agressive? Media/2
-    for(i=0;i<ptc->line_num;i++){
-        if ((ptc->z[i]>(ptc->Minz+thr))&&(ptc->x[i]!=0)){ // Zmin+Media/2
-            overwrite_struct(ptc,i);
-            ptc->deleted_points++;
-        }
-    }
+
+
 }
 
 void math(struct PointCloud *ptc) {
@@ -241,14 +236,26 @@ void delete_x_neg(struct PointCloud *ptc){
     }
 }
 
-void drivable(struct PointCloud *ptc){ 
+void keep_ground(struct PointCloud *ptc){
 	int i;
-	for( i=0; i<ptc->line_num; i++){ // Pessoa mambo jambo
-		if( ptc->x[i] !=0 &&  abs(ptc->x[i]>ptc->Stdx*2) || abs(ptc->y[i])>ptc->Stdy-1 || abs(ptc->z[i]>ptc->Stdz) ){			
-			ptc->x[i] = 0; //ointcloud.x[i]; 
-            ptc->y[i] = 0; //pointcloud.y[i];
-            ptc->z[i] = 0; //pointcloud.z[i];
+    double thr=(ptc->Muz)/2; // <----- threshold 2 agressive? Media/2
+    for(i=0;i<ptc->line_num;i++){
+        if ((ptc->z[i]>(ptc->Minz+thr))&&(ptc->x[i]!=0)){ // Zmin+Media/2
+            overwrite_struct(ptc,i);
+            ptc->deleted_points++;
         }
     }
 }
+
+void drivable(struct PointCloud *ptc){
+	int i;
+	for( i=0; i<ptc->line_num; i++){ // Pessoa mambo jambo
+		if( ptc->x[i] !=0 &&  abs(ptc->x[i]>ptc->Stdx*2) || abs(ptc->y[i])>ptc->Stdy-1 || abs(ptc->z[i]>ptc->Stdz) ){	
+			ptc->x[i] = 0; // pointcloud.x[i];
+            ptc->y[i] = 0; // pointcloud.y[i];
+            ptc->z[i] = 0; // pointcloud.z[i];
+        }
+    }
+}
+
 

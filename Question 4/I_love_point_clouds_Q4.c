@@ -44,9 +44,10 @@ int cmp(const void *a,const void *b) {
 void* f_timer(void* arg);
 
 void overwrite_struct(struct PointCloud *temp,int line_line_num);
-void math(struct PointCloud *temp);
-void delete_x_neg(struct PointCloud *temp);
-void drivable(struct PointCloud *ptc);
+void math(struct PointCloud *temp); // Pergunta 1
+void delete_x_neg(struct PointCloud *temp); // Pergunta 2.1 e 2.2
+void keep_ground(struct PointCloud *ptc); // Pergunta 2.3
+void drivable(struct PointCloud *ptc); // Pergunta 3
 
 int main(int argc, char * argv []){
 	read_file_name[0]='\0'; // Clear char
@@ -169,6 +170,17 @@ void delete_x_neg(struct PointCloud *ptc){
     }
 }
 
+void keep_ground(struct PointCloud *ptc){
+	int i;
+    double thr=(ptc->Muz)/2; // <----- threshold 2 agressive? Media/2
+    for(i=0;i<ptc->line_num;i++){
+        if ((ptc->z[i]>(ptc->Minz+thr))&&(ptc->x[i]!=0)){ // Zmin+Media/2
+            overwrite_struct(ptc,i);
+            ptc->deleted_points++;
+        }
+    }
+}
+
 void drivable(struct PointCloud *ptc){ 
 	int i;
 	for( i=0; i<ptc->line_num; i++){ // Pessoa mambo jambo
@@ -206,7 +218,6 @@ void* f_timer(void* arg){
     //free(ficheiro1); //Limpa memoria
     //======== READ .TXT FILE END ========
 
-
 	clock_gettime(CLOCK_MONOTONIC,&strT); // f1 start time
 	// F1 --> math
     math(&pointcloud);
@@ -218,7 +229,7 @@ void* f_timer(void* arg){
 	clock_gettime(CLOCK_MONOTONIC,&strT); // f2 start time
 	// F2 --> data processing (x<0|z<0)
 	delete_x_neg(&pointcloud);
-	// !!!!!!!!!!!!!! FALTA AQUI UMA FUNÇÃO !!!!!!!!!!!!!!!
+	keep_ground(&pointcloud);
     // F2 END
 	clock_gettime(CLOCK_MONOTONIC,&endT); // f2 end time
 	performance[1] += (endT.tv_sec-strT.tv_sec)+(endT.tv_nsec-strT.tv_nsec)/(float)BILLION;

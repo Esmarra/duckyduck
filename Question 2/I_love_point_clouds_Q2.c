@@ -53,9 +53,10 @@ void* task2(struct PointCloud *ptc);
 void* task3(struct PointCloud *ptc);
 
 void overwrite_struct(struct PointCloud *temp,int line_line_num);
-void math(struct PointCloud *temp);
-void delete_x_neg(struct PointCloud *temp);
-void drivable(struct PointCloud *ptc);
+void math(struct PointCloud *temp); // Pergunta 1
+void delete_x_neg(struct PointCloud *temp); // Pergunta 2.1 e 2.2
+void keep_ground(struct PointCloud *ptc); // Pergunta 2.3
+void drivable(struct PointCloud *ptc); // Pergunta 3
 
 
 
@@ -91,7 +92,6 @@ int main(int argc, char * argv []){
 		if (error!=0){
 			printf("ERROR: Bad Scheduling Policy\n");
 		}
-		
 		memset(&(param[i]), 0, sizeof(struct sched_param));
 		// Finds top priority and stores it
 		param[i].sched_priority = sched_get_priority_max (SCHED_FIFO);
@@ -127,7 +127,7 @@ int main(int argc, char * argv []){
     sem_destroy(&mutex); // destroy mutex before ending the program
     return(0);
 	
-/*	
+/*
     // Write New PCL
     struct test temp_ptc[pointcloud.line_num-pointcloud.deleted_points];
     int n_ptc=0;
@@ -146,12 +146,12 @@ int main(int argc, char * argv []){
     fclose(outfile);
     //=== Write New PCL END ===
 */
-    //
-   // printf("\n Deleted points=%d",pointcloud.deleted_points);
-    //return(0);
+	//
+	// printf("\n Deleted points=%d",pointcloud.deleted_points);
+	//return(0);
 }
 
-void* task1(struct PointCloud *ptc) {
+void* task1(struct PointCloud *ptc) { // Le e faz math
 	printf("    Starting Task1\n");
     sem_wait(&mutex); // Lock Semaphore
     ptc->line_num=0;
@@ -189,18 +189,19 @@ void* task1(struct PointCloud *ptc) {
     sem_post(&mutex); // Unlock Semaphore 
 }
 
-void* task2(struct PointCloud *ptc){
+void* task2(struct PointCloud *ptc){ // Delete x<0 ,  Keep ground
 	printf("    Starting Task2\n");
     sem_wait(&mutex); // Lock Semaphore 
-    delete_x_neg(ptc); // delete all x<0 e cluster points
+    delete_x_neg(ptc); // Delete all x<0 e Cluster points
+    keep_ground(ptc); // Keep Ground only
     sem_post(&mutex); // Unlock Semaphore 
 }
 
-void* task3(struct PointCloud *ptc){
+void* task3(struct PointCloud *ptc){ // DRIVABLE
 	printf("    Starting Task3\n");
-    sem_wait(&mutex); // Lock Semaphore 
+    sem_wait(&mutex); // Lock Semaphore
     
-    sem_post(&mutex); // Unlock Semaphore 
+    sem_post(&mutex); // Unlock Semaphore
 }
 
 void math(struct PointCloud *ptc) {
@@ -272,11 +273,22 @@ void delete_x_neg(struct PointCloud *ptc){
     }
 }
 
+void keep_ground(struct PointCloud *ptc){
+	int i;
+    double thr=(ptc->Muz)/2; // <----- threshold 2 agressive? Media/2
+    for(i=0;i<ptc->line_num;i++){
+        if ((ptc->z[i]>(ptc->Minz+thr))&&(ptc->x[i]!=0)){ // Zmin+Media/2
+            overwrite_struct(ptc,i);
+            ptc->deleted_points++;
+        }
+    }
+}
+
 void drivable(struct PointCloud *ptc){ 
 	int i;
 	for( i=0; i<ptc->line_num; i++){ // Pessoa mambo jambo
 		if( ptc->x[i] !=0 &&  abs(ptc->x[i]>ptc->Stdx*2) || abs(ptc->y[i])>ptc->Stdy-1 || abs(ptc->z[i]>ptc->Stdz) ){			
-			ptc->x[i] = 0;//ointcloud[i].x; 
+			ptc->x[i] = 0;//pointcloud[i].x; 
             ptc->y[i] = 0;//pointcloud[i].y;
             ptc->z[i] = 0;//pointcloud[i].z;
         }
