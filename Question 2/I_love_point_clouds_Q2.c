@@ -84,15 +84,15 @@ int main(int argc, char * argv []){
 	struct sched_param param[3]; // Set Scheduling priority
 	
 	int i;
+	int error; // Error var
 	for(i=0;i<3;i++){ // Thread Generator 0 1 2
-		int error; // Error var
 		pthread_attr_init(&attr[i]); // 1-Starts default thread
 		error=pthread_attr_setschedpolicy(&attr[i], SCHED_FIFO); // 2-Defines scheduling (SCHED_FIFO, SCHED_RR e SCHED_OTHER)
 		if (error!=0){
 			printf("ERROR: Bad Scheduling Policy\n");
 		}
 		
-		memset(&(param[i]), 0, sizeof(struct sched_param)); // <-- REVIEW
+		memset(&(param[i]), 0, sizeof(struct sched_param));
 		// Finds top priority and stores it
 		param[i].sched_priority = sched_get_priority_max (SCHED_FIFO);
 		if(param[i].sched_priority<0){
@@ -124,11 +124,6 @@ int main(int argc, char * argv []){
 	pthread_join(thr[1],NULL);
 	pthread_join(thr[2],NULL);
 	
-	//while(1){
-		//printf("\n\nWaiting...\n\n");
-		
-		
-    //}
     sem_destroy(&mutex); // destroy mutex before ending the program
     return(0);
 	
@@ -151,7 +146,7 @@ int main(int argc, char * argv []){
     fclose(outfile);
     //=== Write New PCL END ===
 */
-    //printf("\n\n %s has Lines=%d",read_file_name,pointcloud.line_num);
+    //
    // printf("\n Deleted points=%d",pointcloud.deleted_points);
     //return(0);
 }
@@ -165,7 +160,7 @@ void* task1(struct PointCloud *ptc) {
 
     //======== READ .TXT FILE ========//
     FILE *ficheiro1;
-    //ficheiro1 = (FILE *)malloc(sizeof(FILE));
+    ficheiro1 = (FILE *)malloc(sizeof(FILE));
     ficheiro1 = fopen(read_file_name,"rt"); // Inicializa ficheiro de leitura
 	while( !feof (ficheiro1) ){
         float x,y,z=0.0;
@@ -177,14 +172,15 @@ void* task1(struct PointCloud *ptc) {
     }
     ptc->line_num-=1;
     fclose(ficheiro1);// Close file
-    //free(ficheiro1); //Limpa memoria
+    //free(ficheiro1); //Limpa memoria <-- Causa Segmentation fault
     //======== READ .TXT FILE END ========//
 
     //======== MATH ========//
     math(ptc);
     //======== MATH END ========//
-	printf("\n----------------------------------");
-    printf("\n Min | X:%f Y:%f Z=%f\n",ptc->Minx,ptc->Miny,ptc->Minz);
+	printf("\n----------------------------------\n");
+	printf(" File \"%s\" has %d lines\n",read_file_name,ptc->line_num);
+    printf(" Min | X:%f Y:%f Z=%f\n",ptc->Minx,ptc->Miny,ptc->Minz);
     printf(" Max | X:%f Y:%f Z=%f\n",ptc->Maxx,ptc->Maxy,ptc->Maxz);
     printf(" Average | X:%f Y:%f Z=%f\n",ptc->Mux,ptc->Muy,ptc->Muz);
     printf(" Standard deviation | X:%f Y:%f Z=%f",ptc->Stdx,ptc->Stdy,ptc->Stdz);
