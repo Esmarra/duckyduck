@@ -7,8 +7,8 @@
 #include <unistd.h>
 #define MAX_PTC 20000
 //point_cloud1
-char read_file_name[]="point_cloud1.txt";   // File to read
-char write_file_name[]="cloudpoint1_exit_qsortx.txt"; // File to write
+char read_file_name[]="point_cloud3.txt";   // File to read
+char write_file_name[]="cloudpoint3_exit.txt"; // File to write
 
 struct PointCloud{
     double x[MAX_PTC];
@@ -50,12 +50,18 @@ void delete_x_neg(struct PointCloud *ptc);
 void drivable(struct PointCloud *ptc);
 
 int main(void){
+	int i;
 	struct PointCloud pointcloud;
-	
+	pointcloud.line_num=0;
+	pointcloud.deleted_points=0;
+	pointcloud.Stdx=0;
+    pointcloud.Stdy=0;
+    pointcloud.Stdz=0;
+
 	task1(&pointcloud); // Lê.txt calc Min Max Med Std
 	task2(&pointcloud); // nuke x<0
-	task3(&pointcloud);
-/*
+	
+
     //======== SORT FOR X CODE ========//
     struct str_sort sorted_array[pointcloud.line_num]; //Prof Sort Code
     printf("\n SORT FOR X");
@@ -76,7 +82,7 @@ int main(void){
         //printf("\n Point | x=%f y=%f z=%f",pointcloud.x[i],pointcloud.y[i],pointcloud.z[i]);
     }
     //======== SORT FOR X CODE END ========//
-*/
+	task3(&pointcloud);
     /*
     //======== DEBUG -> DISPLAY SORTED ARRAY ========//
     for(i=0;i<line_num;i++){ // DEBUG -> DISPLAY SORTED ARRAY
@@ -89,29 +95,11 @@ int main(void){
 	*		POINT PROCESSING
 	********************************/
 
-    // Elemina todos os z>0 |Esmr|
-    /*
-    int deleted_points_wallx=0;
-    double threshold=0.400; // <----- threshold 2 agressive?
-    for(i=0;i<pointcloud.line_num;i++){
-        if ((pointcloud.z[i]>0)&&(pointcloud.x[i]!=0)){
-            overwrite_struct(&pointcloud,i);
-            pointcloud.deleted_points++;
-        }
-        //printf("\n Point | x=%f y=%f z=%f",pointcloud[i].x,pointcloud[i].y,pointcloud[i].z);
-        if((pointcloud.x[i+1]>(pointcloud.x[i]-threshold))&&(pointcloud.x[i+1]<(pointcloud.x[i]+threshold)&&(pointcloud.x[i]!=0))){ // Keep only ground/road
-            overwrite_struct(&pointcloud,i); // A for effort :D
-            deleted_points_wallx++;
-        }
-    }
-	*/
-	
     // Write New PCL
     struct test temp_ptc[pointcloud.line_num-pointcloud.deleted_points];
     int n_ptc=0;
     FILE *outfile;
     outfile = fopen(write_file_name,"w");
-    int i;
     for(i=0;i<pointcloud.line_num;i++){
         if((pointcloud.x[i])!=0){
             fprintf(outfile,"%f %f %f\n",pointcloud.x[i],pointcloud.y[i],pointcloud.z[i]);
@@ -134,9 +122,7 @@ int main(void){
         printf("\n Temp Ptc | x=%f y=%f z=%f",temp_ptc[i].x,temp_ptc[i].y,temp_ptc[i].z); 
     }
 */	
-    printf("\n\n %s has Lines=%d",read_file_name,pointcloud.line_num);
     printf("\n Deleted points=%d",pointcloud.deleted_points);
-    //printf("\n   :wall_x=%d",deleted_points_wallx);
     printf("\n %s has %d points\n",write_file_name,pointcloud.line_num-pointcloud.deleted_points);
     return(0);
 }
@@ -166,12 +152,13 @@ void* task1(struct PointCloud *ptc) {
     //======== MATH ========//
 	math(ptc);
     //======== MATH END ========//
-    printf("\n----------------------------------");
-    printf("\n Min | X:%f Y:%f Z=%f\n",ptc->Minx,ptc->Miny,ptc->Minz);
+    printf("\n----------------------------------\n");
+	printf(" File \"%s\" has %d lines\n",read_file_name,ptc->line_num);
+    printf(" Min | X:%f Y:%f Z=%f\n",ptc->Minx,ptc->Miny,ptc->Minz);
     printf(" Max | X:%f Y:%f Z=%f\n",ptc->Maxx,ptc->Maxy,ptc->Maxz);
     printf(" Average | X:%f Y:%f Z=%f\n",ptc->Mux,ptc->Muy,ptc->Muz);
-    printf(" Standard deviation | X:%f Y:%f Z=%f\n",ptc->Stdx,ptc->Stdy,ptc->Stdz);
-    printf("\n----------------------------------");
+    printf(" Standard deviation | X:%f Y:%f Z=%f",ptc->Stdx,ptc->Stdy,ptc->Stdz);
+    printf("\n----------------------------------\n");
 }
 
 void* task2(struct PointCloud *ptc){
@@ -179,7 +166,15 @@ void* task2(struct PointCloud *ptc){
 }
 
 void* task3(struct PointCloud *ptc){
-	
+	// Delete Paredes e outliners (Fica só o chão)
+    int i;
+    double thr=(ptc->Muz)/2; // <----- threshold 2 agressive? Media/2
+    for(i=0;i<ptc->line_num;i++){
+        if ((ptc->z[i]>(ptc->Minz+thr))&&(ptc->x[i]!=0)){ // Zmin+Media/2
+            overwrite_struct(ptc,i);
+            ptc->deleted_points++;
+        }
+    }
 }
 
 void math(struct PointCloud *ptc) {
