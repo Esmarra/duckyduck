@@ -98,9 +98,9 @@ int main(int argc, char * argv []){
 	pthread_join(thr,&exe_time);
 	double *performance=(double*)exe_time;
 
-	printf("Time F1 = %lf \n", performance[0]);
-	printf("Time F2 = %lf \n", performance[1]);
-	printf("Time F3 = %lf \n", performance[2]);
+	printf("Time F1 = %lf sec\n", performance[0]);
+	printf("Time F2 = %lf sec\n", performance[1]);
+	printf("Time F3 = %lf sec\n", performance[2]);
 	pthread_attr_destroy(&attr); // Destroy thread attribute
     return(0);
 }
