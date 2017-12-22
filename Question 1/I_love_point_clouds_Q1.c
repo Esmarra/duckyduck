@@ -50,17 +50,21 @@ int main(int argc, char * argv []){
     //======== MATH ========//
 	math(&pointcloud);
     //======== MATH END ========//
-    printf("%s has Lines=%d",read_file_name,pointcloud.line_num);
-    printf("\n----------------------------------");
-    printf("\n Min | X:%f Y:%f Z=%f\n",pointcloud.Minx,pointcloud.Miny,pointcloud.Minz);
+    
+    printf("\n----------------------------------\n");
+    printf(" File \"%s\" has %d lines\n",read_file_name,pointcloud.line_num);
+    printf(" Min | X:%f Y:%f Z=%f\n",pointcloud.Minx,pointcloud.Miny,pointcloud.Minz);
     printf(" Max | X:%f Y:%f Z=%f\n",pointcloud.Maxx,pointcloud.Maxy,pointcloud.Maxz);
     printf(" Average | X:%f Y:%f Z=%f\n",pointcloud.Mux,pointcloud.Muy,pointcloud.Muz);
-    printf(" Standard deviation | X:%f Y:%f Z=%f\n",pointcloud.Stdx,pointcloud.Stdy,pointcloud.Stdz);
+    printf(" Standard deviation | X:%f Y:%f Z=%f",pointcloud.Stdx,pointcloud.Stdy,pointcloud.Stdz);
+    printf("\n----------------------------------\n");
     return(0);
 }
 
 void math(struct PointCloud *ptc) {
-	float Sx,Sy,Sz=0.0;
+	float Sx=0.0;
+	float Sy=0.0;
+	float Sz=0.0;
     
     ptc->Minx=ptc->x[0];
     ptc->Miny=ptc->y[0];
@@ -90,7 +94,9 @@ void math(struct PointCloud *ptc) {
     Sx = 0.0;
     Sy = 0.0;
     Sz = 0.0;
-    float Varx,Vary,Varz;
+    float Varx=0.0;
+    float Vary=0.0;
+    float Varz=0.0;
     for (i = 0; i < ptc->line_num; i++){
         Sx= Sx + pow((ptc->x[i] - ptc->Mux), 2);
         Sy= Sy + pow((ptc->y[i] - ptc->Muy), 2);
